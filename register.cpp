@@ -1,17 +1,19 @@
-includes "register.h"
+#include "register.h"
 
-void 8bRegister::set(uint8_t val) {
+void Register_8b::set(uint8_t val) {
     value = val;
 }
-auto 8bRegister::get() {
+uint8_t Register_8b::get() {
     return value;
 }
-void 16bRegister::set(uint16_t val) {
+pairRegister::pairRegister(Register_8b& u, Register_8b& l) : u_val(u), l_val(l) {
+}
+void Register_16b::set(uint16_t val) {
     value = val;
 }
-auto 16bRegister::get() {
+uint16_t Register_16b::get() {
     return value;
 }
-void 16bRegister::add(uint16_t val) {
+void Register_16b::add(uint16_t val) {
     value += val;
 }

@@ -7,9 +7,30 @@
 CPU::CPU(Handler& hand) : handler(hand), af(a,f), bc(b,c), de(d,e), hl(h,l) {
 }
 
+void CPU::debug2() {
+    Register_8b& temp = f;
+    printf("%x %x\n", temp.get(), f.get());
+    f.set(3);
+    printf("%x %x\n", temp.get(), f.get());
+    temp.set(0xa);
+    printf("%x %x\n", temp.get(), f.get());
+}
+
+void CPU::debug() {
+    fprintf(stderr,"af= %04x bc= %04x\nde= %04x hl= %04x\nsp= %04x pc= %04x\nf:%d%d%d%d\n\n", af.get(), bc.get(), de.get(), hl.get(), sp.get(), pc.get(), f.getZ(), f.getN(), f.getH(), f.getC()); 
+    /* << "af= " << af.get() << " bc= " << bc.get() << std::endl;
+    std::cout << "de= " << de.get() << " hl= " << hl.get() << std::endl;
+    std::cout << "sp= " << sp.get() << " pc= " << pc.get() << std::endl;
+    std::cout << "f:" << f.getZ() << f.getN() << f.getH() << f.getC() << std::endl << std::endl;*/
+}
 void CPU::init() {
     cycles=0;
-    pc.set(0x0000);
+    pc.set(0x0100);
+    sp.set(0xfffe);
+    af.set(0x01b0);
+    bc.set(0x0013);
+    de.set(0x00d8);
+    hl.set(0x014d);
 }
 void CPU::tick() {
     if (cycles > 0) {
@@ -17,13 +38,19 @@ void CPU::tick() {
         return;
     }
     decode_inst(fetchPC());
+    if (f.getZ())
+        printf("f is zero\n");
     //printf("%d \n", temp);
 }    
 //instructions
 uint8_t CPU::fetchPC() {
     uint8_t data = handler.mmu.loadWord(pc.get());
-    pc.set(pc.get()+4);
-    printf("inst: %d \n", data);
+    pc.set(pc.get()+1);
+    if (pc.get() == 0x20b)
+        printf("point1\n");
+    if (pc.get() == 0x20f)
+        printf("point2\n");
+    //printf("inst: %d \n", data);
     return data;
 }
 
@@ -32,41 +59,41 @@ void CPU::NOP() {
 }
 
 //load immediate
-void CPU::loadimm(Register_8b r) {
+void CPU::loadimm(Register_8b& r) {
     uint8_t temp = fetchPC();
     r.set(temp);
     cycles = 1;
 }
 
-void CPU::loadimm(Register_16b r) {
+void CPU::loadimm(Register_16b& r) {
     uint16_t temp = fetchPC() | fetchPC() << 8;
     r.set(temp);
     cycles = 2;
 }
 
-void CPU::loadimm(pairRegister r) {
+void CPU::loadimm(pairRegister& r) {
     uint16_t temp = fetchPC() | fetchPC() << 8;
     r.set(temp);
     cycles = 2;
 }
 
 //inc
-void CPU::inc(pairRegister r) {
+void CPU::inc(pairRegister& r) {
     r.set(r.get()+1);
     cycles = 1;
 }
 
-void CPU::inc(Register_16b r) {
+void CPU::inc(Register_16b& r) {
     r.set(r.get()+1);
     cycles = 1;
 }
 
-void CPU::inc(Register_8b r) {
+void CPU::inc(Register_8b& r) {
     uint8_t temp = r.get();
     r.set(temp+1);
     f.setH((((temp&0x0f)+(0x01))&0x10) == 0x10);
     f.setN(false);
-    f.setZ(temp+1==0);
+    f.setZ(((temp+1)&0xff)==0);
 }
 
 void CPU::inc_HL() {//increment word at memory address stored in HL
@@ -80,17 +107,17 @@ void CPU::inc_HL() {//increment word at memory address stored in HL
 }
 
 //dec
-void CPU::dec(pairRegister r) {
+void CPU::dec(pairRegister& r) {
     r.set(r.get()-1);
     cycles = 1;
 }
 
-void CPU::dec(Register_16b r) {
+void CPU::dec(Register_16b& r) {
     r.set(r.get()-1);
     cycles = 1;
 }
 
-void CPU::dec(Register_8b r) {
+void CPU::dec(Register_8b& r) {
     uint8_t temp = r.get();
     r.set(temp-1);
     f.setH((((temp&0x0f)-(0x01))&0x10) == 0x10);
@@ -171,7 +198,7 @@ void CPU::sw_HL_imm() {
 }
 
 //load from memory
-void CPU::loadWord(uint16_t addr, Register_8b r) {
+void CPU::loadWord(uint16_t addr, Register_8b& r) {
     r.set(handler.mmu.loadWord(addr));
     cycles = 1;
 }
@@ -182,7 +209,7 @@ uint8_t CPU::fetchWord(uint16_t addr) {
 }
 
 //add
-void CPU::add_HL(pairRegister r) {
+void CPU::add_HL(pairRegister& r) {
     uint16_t HL_val = hl.get();
     uint16_t r_val = r.get();
     f.setH((((HL_val&0xff)+(r_val&0xff)) & 0x0100));
@@ -204,29 +231,29 @@ void CPU::add_HLSP() {
     cycles = 1;
 }
 
-void CPU::add(Register_8b r1, uint8_t r2_val) {
+void CPU::add(Register_8b& r1, uint8_t r2_val) {
     uint8_t r1_val = r1.get();
     f.setH((((r1_val&0x0f)+(r2_val&0x0f))&0x10) == 0x10);
     uint16_t carry = (r1_val + r2_val)&0x0100; 
     f.setN(false);
-    f.setZ(r1_val + r2_val == 0);
+    f.setZ(((r1_val + r2_val)&0xff) == 0);
     f.setC(carry);
     r1.set(r1_val + r2_val);
 }
 
-void CPU::adc(Register_8b r1, uint8_t r2_val) {
+void CPU::adc(Register_8b& r1, uint8_t r2_val) {
     uint8_t r1_val = r1.get();
     bool carryIn = f.getC();
     f.setH((((r1_val&0x0f)+(r2_val&0x0f)+carryIn)&0x10) == 0x10);
     uint16_t carry = (r1_val + r2_val + carryIn)&0x0100; 
     f.setN(false);
-    f.setZ(r1_val + r2_val + carryIn == 0);
+    f.setZ(((r1_val + r2_val + carryIn)&0xff) == 0);
     f.setC(carry);
     r1.set(r1_val + r2_val + carryIn);
 }
 
 //sub
-void CPU::sub(Register_8b r1, uint8_t r2_val) {
+void CPU::sub(Register_8b& r1, uint8_t r2_val) {
     uint8_t r1_val = r1.get();
     f.setH((((r1_val&0x0f)-(r2_val&0x0f))&0x10) == 0x10);
     uint16_t carry = (r1_val - r2_val)&0x0100; 
@@ -236,7 +263,7 @@ void CPU::sub(Register_8b r1, uint8_t r2_val) {
     r1.set(r1_val - r2_val);
 }
 
-void CPU::sbc(Register_8b r1, uint8_t r2_val) {
+void CPU::sbc(Register_8b& r1, uint8_t r2_val) {
     uint8_t r1_val = r1.get();
     bool carryIn = f.getC();
     f.setH((((r1_val&0x0f)-(r2_val&0x0f)+carryIn)&0x10) == 0x10);
@@ -253,7 +280,7 @@ void CPU::sbc(Register_8b r1, uint8_t r2_val) {
 //jump
 void CPU::jr() {
     uint8_t temp = fetchPC();
-    pc.set(pc.get()+temp);
+    pc.set(pc.get() + (temp&0x7f) - (temp&0x80));
     cycles = 2;
 }
 
@@ -261,7 +288,7 @@ void CPU::jr(bool cond) {
     uint8_t temp = fetchPC();
     cycles = 1;
     if (cond) {
-        pc.set(pc.get()+temp);
+        pc.set(pc.get() + (temp&0x7f) - (temp&0x80));
         return;
     }
     cycles++;
@@ -281,7 +308,7 @@ void CPU::jp(bool cond) {
 }
 
 //return
-void CPU::pop(pairRegister r) {
+void CPU::pop(pairRegister& r) {
     uint16_t temp = handler.mmu.loadWord(sp.get());
     sp.set(sp.get()+1);
     temp |= handler.mmu.loadWord(sp.get())<<8;
@@ -331,7 +358,7 @@ void CPU::ccf() {
     f.setC(!f.getC());
 }
 
-void CPU::bitwise_and(Register_8b r1, uint8_t r2_val) {
+void CPU::bitwise_and(Register_8b& r1, uint8_t r2_val) {
     uint8_t r1_val = r1.get();
     f.setZ(r1_val & r2_val);
     f.setN(false);
@@ -340,7 +367,7 @@ void CPU::bitwise_and(Register_8b r1, uint8_t r2_val) {
     r1.set(r1_val + r2_val);
 }
 
-void CPU::bitwise_xor(Register_8b r1, uint8_t r2_val) {
+void CPU::bitwise_xor(Register_8b& r1, uint8_t r2_val) {
     uint8_t r1_val = r1.get();
     f.setZ(r1_val ^ r2_val);
     f.setN(false);
@@ -349,7 +376,7 @@ void CPU::bitwise_xor(Register_8b r1, uint8_t r2_val) {
     r1.set(r1_val ^ r2_val);
 }
 
-void CPU::bitwise_or(Register_8b r1, uint8_t r2_val) {
+void CPU::bitwise_or(Register_8b& r1, uint8_t r2_val) {
     uint8_t r1_val = r1.get();
     f.setZ(r1_val | r2_val);
     f.setN(false);
@@ -358,7 +385,7 @@ void CPU::bitwise_or(Register_8b r1, uint8_t r2_val) {
     r1.set(r1_val | r2_val);
 }
 
-void CPU::bitwise_cp(Register_8b r1, uint8_t r2_val) {
+void CPU::bitwise_cp(Register_8b& r1, uint8_t r2_val) {
     uint8_t r1_val = r1.get();
     f.setZ((r1_val - r2_val) == 0);
     f.setH((((r1_val&0x0f)-(r2_val&0x0f))&0x10) == 0x10);
@@ -388,7 +415,7 @@ void CPU::decode_inst(uint8_t instruction) {
         case 0x0a: {loadWord(bc.get(), a); break;}
         case 0x0b: {dec(bc); break;}
         case 0x0c: {inc(c); break;}
-        case 0x0d: {dec(d); break;}
+        case 0x0d: {dec(c); break;}
         case 0x0e: {loadimm(c); break;}
         case 0x0f: {rrca(); break;}
 

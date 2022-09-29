@@ -3,7 +3,7 @@
 
 class MMU {
 private:
-    uint8_t memory[0x2000];
+    uint8_t memory[0x10000];
     int dmaCycles, dmaStart;
     void initDMA(uint8_t val);
 public:

@@ -3,11 +3,11 @@
 
 class Register_8b {
 protected:
-    uint8_t value = 0x0;
+    uint8_t value;
 public:
+    Register_8b() : value(0) {}
     void set(uint8_t v);
     uint8_t get();
-    uint8_t add(uint8_t v);
 };
 
 class flagRegister : public Register_8b {
@@ -24,7 +24,7 @@ public:
 
 class pairRegister {
 private:
-    Register_8b& u_val, l_val;
+    Register_8b &u_val, &l_val;
 public:
     pairRegister(Register_8b& u, Register_8b& l); 
     void set(uint16_t v);

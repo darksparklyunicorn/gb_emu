@@ -1,17 +1,21 @@
 #include "mmu.h"
 #include <stdio.h>
+#include <iostream>
 
 void MMU::init() {
     dmaCycles = 0;
 }
 
 uint8_t MMU::loadWord(uint16_t addr) {
-    return memory[addr/4];
+    return memory[addr];
 }
 void MMU::storeWord(uint16_t addr, uint8_t val) {
-    memory[addr/4] = val;
+    memory[addr] = val;
     if (addr == 0xff46)
         initDMA(val);
+    if (addr == 0xFF02 && val == 0x81) {
+        std::cout << loadWord(0xFF01);
+    }
 }
 void MMU::initDMA(uint8_t val) {
     dmaCycles = 0x9f;

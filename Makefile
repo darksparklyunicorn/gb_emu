@@ -1,3 +1,6 @@
+CXX = g++
+CXXFLAGS = -g -Wall
+
 main: driver.o cpu.o handler.o mmu.o register.o
 	g++ driver.o cpu.o handler.o mmu.o register.o -o main
 driver.o: driver.cpp handler.h

@@ -15,7 +15,6 @@ int main(int argc, char **argv) {
         std::this_thread::sleep_for (std::chrono::nanoseconds(900));
         handler.cpu.tick();
         handler.mmu.tick();
-        handler.cpu.debug();
         //scanf("%s", buf);
     }
 }    

@@ -19,6 +19,7 @@ private:
     pairRegister af, bc, de, hl;
     Register_16b pc, sp;
     void decode_inst(uint8_t instruction);
+    void decode_cb_inst(uint8_t);
     uint8_t fetchPC();
     uint8_t fetchWord(uint16_t addr);
 
@@ -45,11 +46,18 @@ private:
     
     void sw_sp();
     void sw_HL_imm();
+    void sw_A_imm(uint8_t);
+    void sw_A_imm16();
+    
     
     void loadWord(uint16_t addr, Register_8b& r);
+    void lw_A_imm(uint8_t);
+    void lw_A_imm16();
+    void lw_hl_sp();
 
     void add_HL(pairRegister& r);
     void add_HLSP();
+    void add_SP_imm();
     void add(Register_8b& r1, uint8_t r2);
     void adc(Register_8b& r1, uint8_t r2);
     void sub(Register_8b& r1, uint8_t r2);
@@ -64,13 +72,28 @@ private:
     void ret();
     void ret(bool cond);
     void jp();
+    void jp_HL();
     void jp(bool cond);
+    void call(bool);
+
 
     void pop(pairRegister& r);
     void pop_PC();
+    void push(pairRegister&);
+    void push_PC();
 
     void cpl();
     void ccf();
     void scf();
+    void rst(uint8_t);
 
+    void addi();
+    void subi();
+    void adci();
+    void sbci();
+    void andi();
+    void ori();
+    void xori();
+    void cpi();
+    
 };

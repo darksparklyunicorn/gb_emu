@@ -37,19 +37,15 @@ void CPU::tick() {
         cycles--;
         return;
     }
-    decode_inst(fetchPC());
-    if (f.getZ())
-        printf("f is zero\n");
+    debug();
+    uint8_t temp = fetchPC();
+    decode_inst(temp);
     //printf("%d \n", temp);
 }    
 //instructions
 uint8_t CPU::fetchPC() {
     uint8_t data = handler.mmu.loadWord(pc.get());
     pc.set(pc.get()+1);
-    if (pc.get() == 0x20b)
-        printf("point1\n");
-    if (pc.get() == 0x20f)
-        printf("point2\n");
     //printf("inst: %d \n", data);
     return data;
 }
@@ -197,6 +193,19 @@ void CPU::sw_HL_imm() {
     cycles = 2;
 }
 
+void CPU::sw_A_imm16() {
+    uint16_t addr = fetchPC() | fetchPC()<<8;
+    handler.mmu.storeWord(addr, a.get());
+    cycles = 3;
+}
+
+void CPU::sw_A_imm(uint8_t imm) {
+    uint16_t addr = imm | 0xff00;
+    handler.mmu.storeWord(addr, a.get());
+    cycles = 2;
+}
+
+
 //load from memory
 void CPU::loadWord(uint16_t addr, Register_8b& r) {
     r.set(handler.mmu.loadWord(addr));
@@ -208,6 +217,31 @@ uint8_t CPU::fetchWord(uint16_t addr) {
     return handler.mmu.loadWord(addr);
 }
 
+void CPU::lw_A_imm(uint8_t imm) {
+    uint16_t temp = imm | 0xff00;
+    a.set(fetchWord(temp));
+    cycles = 2;
+}
+
+void CPU::lw_A_imm16() {
+    uint16_t temp = fetchPC() | fetchPC()<<8;
+    a.set(fetchWord(temp));
+    cycles = 3;
+}
+
+void CPU::lw_hl_sp() {
+    uint8_t temp = fetchPC();
+    int imm = (temp&0x7f) - (temp&0x80);
+    uint16_t temp2 = sp.get();
+    f.setH((((temp2&0xff)+(imm&0xff)) & 0x0100));
+    f.setN(false);
+    uint32_t carry = (temp2 + imm) & 0x00010000;
+    f.setC(carry);
+    hl.set(temp2+imm);
+    cycles = 2;
+}
+
+   
 //add
 void CPU::add_HL(pairRegister& r) {
     uint16_t HL_val = hl.get();
@@ -239,6 +273,18 @@ void CPU::add(Register_8b& r1, uint8_t r2_val) {
     f.setZ(((r1_val + r2_val)&0xff) == 0);
     f.setC(carry);
     r1.set(r1_val + r2_val);
+}
+
+void CPU::add_SP_imm() {
+    uint8_t temp = fetchPC();
+    int imm = (temp&0x7f) - (temp&0x80);
+    uint16_t temp2 = sp.get();
+    f.setH((((temp2&0xff)+(imm&0xff)) & 0x0100));
+    f.setN(false);
+    uint32_t carry = (temp2 + imm) & 0x00010000;
+    f.setC(carry);
+    sp.set(temp2+imm);
+    cycles = 3;
 }
 
 void CPU::adc(Register_8b& r1, uint8_t r2_val) {
@@ -274,9 +320,6 @@ void CPU::sbc(Register_8b& r1, uint8_t r2_val) {
     r1.set(r1_val - r2_val - carryIn);
 }
 
-
-
-
 //jump
 void CPU::jr() {
     uint8_t temp = fetchPC();
@@ -300,11 +343,32 @@ void CPU::jp() {
     cycles = 3;
 }
 
+void CPU::jp_HL() {
+    pc.set(hl.get());
+}
+
 void CPU::jp(bool cond) {
     if (cond) 
         jp();
     else 
         cycles = 2;
+}
+
+void CPU::call(bool cond) {
+    cycles = 2;
+    if (cond) {
+        uint16_t temp = fetchPC() | fetchPC() << 8;
+        push_PC();
+        pc.set(temp);
+        cycles += 3;
+    }
+}
+
+void CPU::rst(uint8_t r) {
+    uint16_t addr = fetchWord(1<<r);
+    push_PC();
+    pc.set(addr);
+    cycles = 3;    
 }
 
 //return
@@ -316,6 +380,25 @@ void CPU::pop(pairRegister& r) {
     r.set(temp);
     cycles = 2;
 }
+
+void CPU::push(pairRegister& r) {
+    uint16_t temp = r.get();
+    uint16_t addr = sp.get();
+    storeWord(addr-1, (uint8_t)(temp>>8));
+    storeWord(addr-2, (uint8_t)(temp&0xff));
+    sp.set(addr-2);
+    cycles = 3;
+}    
+
+void CPU::push_PC() {
+    uint16_t temp = pc.get();
+    uint16_t addr = sp.get();
+    storeWord(addr-1, (uint8_t)(temp>>8));
+    storeWord(addr-2, (uint8_t)(temp&0xff));
+    sp.set(addr-2);
+    cycles = 3;
+}    
+
 
 void CPU::pop_PC() {
     uint16_t temp = handler.mmu.loadWord(sp.get());
@@ -395,6 +478,46 @@ void CPU::bitwise_cp(Register_8b& r1, uint8_t r2_val) {
     r1.set(r1_val + r2_val);
 }
 
+//immediate
+void CPU::addi() {
+    add(a, fetchPC());
+    cycles = 1;
+}
+
+void CPU::subi() {
+    sub(a, fetchPC());
+    cycles = 1;
+}
+
+void CPU::adci() {
+    adc(a, fetchPC());
+    cycles = 1;
+}
+
+void CPU::sbci() {
+    sbc(a, fetchPC());
+    cycles = 1;
+}
+
+void CPU::andi() {
+    bitwise_and(a, fetchPC());
+    cycles = 1;
+}
+
+void CPU::ori() {
+    bitwise_or(a, fetchPC());
+    cycles = 1;
+}
+
+void CPU::xori() {
+    bitwise_xor(a, fetchPC());
+    cycles = 1;
+}
+
+void CPU::cpi() {
+    bitwise_cp(a, fetchPC());
+    cycles = 1;
+}
 
 
 
@@ -624,7 +747,75 @@ void CPU::decode_inst(uint8_t instruction) {
         case 0xc1: {pop(bc); break;}
         case 0xc2: {jp(f.getZ()==0); break;}
         case 0xc3: {jp(); break;}
-        case 0xc4: {break; } //TODO call
-    
+        case 0xc4: {call(f.getZ()==0); break;} //TODO call
+        case 0xc5: {push(bc); break;}
+        case 0xc6: {addi(); break;}
+        case 0xc7: {rst(0); break;}
+        
+        case 0xc8: {ret(f.getZ()==1); break;}
+        case 0xc9: {ret(); break;}
+        case 0xca: {jp(f.getZ()==1); break;}
+        case 0xcb: {decode_cb_inst(fetchPC()); break;}
+        case 0xcc: {call(f.getZ()==1); break;}
+        case 0xcd: {call(true); break;}
+        case 0xce: {adci(); break;}
+        case 0xcf: {rst(1); break;}
+
+        case 0xd0: {ret(f.getC()==0); break;}
+        case 0xd1: {pop(de); break;}
+        case 0xd2: {jp(f.getC()==0); break;}
+        case 0xd3: {break;} //invalid
+        case 0xd4: {call(f.getC()==0); break;}
+        case 0xd5: {push(de); break;}
+        case 0xd6: {subi(); break;}
+        case 0xd7: {rst(2); break;}
+        
+        case 0xd8: {ret(f.getC()==1); break;}
+        case 0xd9: {ret(); break;} //TODO add reti
+        case 0xda: {jp(f.getC()==1); break;}
+        case 0xdb: {break;} //invalid
+        case 0xdc: {call(f.getC()==1); break;}
+        case 0xdd: {break;} //invalid
+        case 0xde: {sbci(); break;}
+        case 0xdf: {rst(3); break;}
+
+        case 0xe0: {sw_A_imm(fetchPC()); break;}
+        case 0xe1: {pop(hl); break;}
+        case 0xe2: {sw_A_imm(c.get()); break;}
+        case 0xe3: {break;} //invalid
+        case 0xe4: {break;} //invalid
+        case 0xe5: {push(hl); break;}
+        case 0xe6: {andi(); break;}
+        case 0xe7: {rst(4); break;}
+        
+        case 0xe8: {add_SP_imm(); break;}
+        case 0xe9: {jp_HL(); break;}
+        case 0xea: {sw_A_imm16(); break;}
+        case 0xeb: {break;} //invalid
+        case 0xec: {break;} //invalid
+        case 0xed: {break;} //invalid
+        case 0xee: {xori(); break;}
+        case 0xef: {rst(5); break;}
+
+        case 0xf0: {lw_A_imm(fetchPC()); break;}
+        case 0xf1: {pop(af); break;}
+        case 0xf2: {lw_A_imm(c.get()); break;}
+        case 0xf3: {break;} //TODO DI
+        case 0xf4: {break;} //invalid
+        case 0xf5: {push(af); break;}
+        case 0xf6: {ori(); break;}
+        case 0xf7: {rst(6); break;}
+
+        case 0xf8: {lw_hl_sp(); break;}
+        case 0xf9: {sp.set(hl.get()); cycles = 1; break;}
+        case 0xfa: {lw_A_imm16(); break;}
+        case 0xfb: {break;} //TODO implement EI
+        case 0xfc: {break;} //invalid
+        case 0xfd: {break;} //invalid
+        case 0xfe: {cpi(); break;}
+        case 0xff: {rst(7); break;}
     }
+}
+
+void CPU::decode_cb_inst(uint8_t instruction) {
 }

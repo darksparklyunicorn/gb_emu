@@ -1,4 +1,6 @@
 #include "handler.h"
 #include "cpu.h"
-Handler::Handler() : cpu(*this) {
+#include "mmu.h"
+
+Handler::Handler() : cpu(*this), mmu(*this) {
 }

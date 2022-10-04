@@ -10,6 +10,12 @@ public:
     uint8_t get();
 };
 
+class IORegister : public Register_8b {
+public:
+    void bitset(int index, bool value);
+    bool bitget(int index);
+};
+
 class flagRegister : public Register_8b {
 public:
     void setZ(bool b);

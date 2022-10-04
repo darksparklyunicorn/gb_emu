@@ -7,6 +7,14 @@ void Register_8b::set(uint8_t val) {
 uint8_t Register_8b::get() {
     return value;
 }
+//IORegister
+
+void IORegister::bitset(int index, bool val) {
+    value = (value & ~(1<<index)) | (val<<index);
+}
+bool IORegister::bitget(int index) {
+    return ((value>>index) & 0x01); 
+}
 
 //flag register
 void flagRegister::setZ(bool b) {

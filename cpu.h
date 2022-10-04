@@ -39,11 +39,30 @@ private:
     void dec(Register_16b& r);
     void dec_HL();
 
-    void rlca();
-    void rla();
-    void rrca();
-    void rra();
-    
+    void rlc(Register_8b&);
+    void rl(Register_8b&);
+    void rrc(Register_8b&);
+    void rr(Register_8b&);
+    void sla(Register_8b&);
+    void sra(Register_8b&);
+    void srl(Register_8b&);
+    void swap(Register_8b&);
+
+    void rlc_HL();
+    void rl_HL();
+    void rrc_HL();
+    void rr_HL();
+    void sla_HL();
+    void sra_HL();
+    void srl_HL();
+    void swap_HL();
+
+    void bit(uint8_t, int);
+    void res(Register_8b&, int);
+    void res_HL(int);
+    void set(Register_8b&, int);
+    void set_HL(int);
+
     void sw_sp();
     void sw_HL_imm();
     void sw_A_imm(uint8_t);

@@ -8,13 +8,18 @@ int main(int argc, char **argv) {
     handler.mmu.loadROM(argv[1]);
     handler.cpu.init();
     handler.mmu.init();
+    handler.ppu.init();
     //handler.cpu.debug2();
     char buf[10];
     int i=0;
-    for (int j=0; j<0xffff; j++) {
-        std::this_thread::sleep_for (std::chrono::nanoseconds(900));
+    for (int j=0; j<0xffffff; j++) {
+        //std::this_thread::sleep_for (std::chrono::nanoseconds(900));
+        handler.ppu.tick();
+        if (++i == 4) {
         handler.cpu.tick();
         handler.mmu.tick();
+        i=0;
+        }
         //scanf("%s", buf);
     }
 }    

@@ -8,7 +8,9 @@ uint8_t Register_8b::get() {
     return value;
 }
 //IORegister
-
+IORegister::IORegister() {
+value = 0;
+}
 void IORegister::bitset(int index, bool val) {
     value = (value & ~(1<<index)) | (val<<index);
 }

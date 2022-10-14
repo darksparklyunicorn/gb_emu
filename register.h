@@ -12,6 +12,7 @@ public:
 
 class IORegister : public Register_8b {
 public:
+    IORegister();
     void bitset(int index, bool value);
     bool bitget(int index);
 };

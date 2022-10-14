@@ -1,4 +1,5 @@
 #include "mmu.h"
+#include "ppu.h"
 #include "register.h"
 #include "handler.h"
 #include <stdio.h>
@@ -11,19 +12,25 @@ void MMU::init() {
 }
 
 uint8_t MMU::loadWord(uint16_t addr) {
-    if (addr >= 0xff00 && addr <= 0xff70) {
-        return handler.ppu.ioreg[addr-0xff00].get();
+    if (addr >= 0xff00 && addr <= 0xff7f) {
+        return handler.ppu.getRegister(addr-0xff00);
     }
 
     return memory[addr];
 }
 void MMU::storeWord(uint16_t addr, uint8_t val) {
-    memory[addr] = val;
     if (addr == 0xff46)
         initDMA(val);
     if (addr == 0xFF02 && val == 0x81) {
-        std::cout << loadWord(0xFF01) << std::endl;
+        std::cout << loadWord(0xFF01);
     }
+    if (addr >= 0xff00 && addr <= 0xff7f) {
+        handler.ppu.setRegister(addr-0xff00, val);
+        return;
+    }
+
+    memory[addr] = val;
+
 }
 void MMU::initDMA(uint8_t val) {
     dmaCycles = 0x9f;
@@ -36,6 +43,7 @@ void MMU::tick() {
         storeWord( 0xfe9f-dmaCycles, loadWord(dmaStart + 0x9f - dmaCycles));
         dmaCycles--;
     }
+    //printf("%x, %x\n", memory[0xff44], handler.ppu.getRegister(0x44));
     dots += 4;
     if (dots >= 456 ) {
         dots = 0;

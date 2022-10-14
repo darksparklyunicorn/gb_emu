@@ -36,6 +36,9 @@ void CPU::tick() {
     uint8_t temp = fetchPC();
     decode_inst(temp);
     //printf("%d \n", temp);
+    
+    if (pc.get() == 0xcb44)
+        exit(0);
 }    
 //instructions
 uint8_t CPU::fetchPC() {
@@ -480,8 +483,8 @@ void CPU::jp(bool cond) {
 
 void CPU::call(bool cond) {
     cycles = 2;
+    uint16_t temp = fetchPC() | fetchPC() << 8;
     if (cond) {
-        uint16_t temp = fetchPC() | fetchPC() << 8;
         push_PC();
         pc.set(temp);
         cycles += 3;
@@ -571,7 +574,7 @@ void CPU::bitwise_and(Register_8b& r1, uint8_t r2_val) {
     f.setN(false);
     f.setH(true);
     f.setC(false);
-    r1.set(r1_val + r2_val);
+    r1.set(r1_val & r2_val);
 }
 
 void CPU::bitwise_xor(Register_8b& r1, uint8_t r2_val) {
@@ -599,7 +602,6 @@ void CPU::bitwise_cp(Register_8b& r1, uint8_t r2_val) {
     uint16_t carry = (r1_val - r2_val)&0x0100;
     f.setN(true);
     f.setC(carry);
-    r1.set(r1_val + r2_val);
 }
 
 //cb bitwise

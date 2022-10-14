@@ -17,5 +17,4 @@ public:
     void storeWord(uint16_t addr, uint8_t val);
     void loadROM(char* data);
     void tick();
-    IORegister* getReg();
 };

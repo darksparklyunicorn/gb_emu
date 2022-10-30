@@ -45,6 +45,10 @@ bool flagRegister::getC() {
     return (value >> 4) & 1;
 }
 
+void flagRegister::set(uint8_t val) {
+    value = val & 0xf0;
+}
+
 //pair register
 pairRegister::pairRegister(Register_8b& u, Register_8b& l) : u_val(u), l_val(l) {
 }

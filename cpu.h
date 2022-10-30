@@ -23,6 +23,7 @@ private:
     uint8_t fetchPC();
     uint8_t fetchWord(uint16_t addr);
 
+    void DAA();
     void NOP();
     void loadimm(Register_8b& r);
     void loadimm(Register_16b& r);

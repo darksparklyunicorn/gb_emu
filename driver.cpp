@@ -12,7 +12,7 @@ int main(int argc, char **argv) {
     //handler.cpu.debug2();
     char buf[10];
     int i=0;
-    for (int j=0; j<0xffffff; j++) {
+    for (unsigned long long j=0; j<0xfffffff; j++) {
         //std::this_thread::sleep_for (std::chrono::nanoseconds(900));
         handler.ppu.tick();
         if (++i == 4) {

@@ -6,7 +6,7 @@ protected:
     uint8_t value;
 public:
     Register_8b() : value(0) {}
-    void set(uint8_t v);
+    virtual void set(uint8_t v);
     uint8_t get();
 };
 
@@ -27,6 +27,7 @@ public:
     bool getN();
     bool getH();
     bool getC();
+    void set(uint8_t v);
 };
 
 class pairRegister {

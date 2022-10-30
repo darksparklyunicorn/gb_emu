@@ -18,3 +18,5 @@ register.o: register.cpp register.h
 .PHONY: clean
 clean:
 	rm -f *.o
+.PHONY: all
+all: clean main

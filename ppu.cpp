@@ -4,7 +4,7 @@
 
 void PPU::init() {
     ioreg[0x40].set(0x91);
-    ioreg[0x44].set(0x07);
+    ioreg[0x44].set(0x90);
     dots = 0;
 }
 
@@ -21,6 +21,7 @@ void PPU::setRegister(uint16_t addr, uint8_t v) {
 }
 
 void PPU::tick() {
+    /*
     if (!ioreg[0x40].bitget(7))
         return;
     if (++dots >= 456) {
@@ -29,4 +30,5 @@ void PPU::tick() {
         if (ioreg[0x44].get() >= 153)
             ioreg[0x44].set(0);
     }
+    */
 }

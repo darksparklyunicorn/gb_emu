@@ -12,7 +12,7 @@ void CPU::debug2() {
 }
 
 void CPU::debug() {
-    fprintf(stderr,"af= %04x bc= %04x\nde= %04x hl= %04x\nsp= %04x pc= %04x\nf:%d%d%d%d\n\n", af.get(), bc.get(), de.get(), hl.get(), sp.get(), pc.get(), f.getZ(), f.getN(), f.getH(), f.getC()); 
+    fprintf(stderr,"af:%04x bc:%04x de:%04x hl:%04x sp:%04x pc:%04x f:%d%d%d%d\n", af.get(), bc.get(), de.get(), hl.get(), sp.get(), pc.get(), f.getZ(), f.getN(), f.getH(), f.getC()); 
     /* << "af= " << af.get() << " bc= " << bc.get() << std::endl;
     std::cout << "de= " << de.get() << " hl= " << hl.get() << std::endl;
     std::cout << "sp= " << sp.get() << " pc= " << pc.get() << std::endl;
@@ -50,6 +50,26 @@ uint8_t CPU::fetchPC() {
 
 void CPU::NOP() {
     cycles = 0;
+}
+
+//DAA
+void CPU::DAA() {
+    uint8_t temp = a.get();
+    if (!f.getN()) {  // after an addition, adjust if (half-)carry occurred or if result is out of bounds
+        if (f.getC() || temp > 0x99) {
+            temp += 0x60; 
+            f.setC(true); 
+        }
+        if (f.getH() || (temp & 0x0f) > 0x09) { 
+            temp += 0x6; 
+        }
+    } else {  // after a subtraction, only adjust if (half-)carry occurred
+        if (f.getC()) temp-=0x60; 
+        if (f.getH()) temp-=0x6; 
+    }
+    a.set(temp);
+    f.setZ(temp == 0); // the usual z flag
+    f.setH(false); // h flag is always cleared
 }
 
 //load immediate
@@ -360,11 +380,17 @@ void CPU::lw_hl_sp() {
     uint8_t temp = fetchPC();
     int imm = (temp&0x7f) - (temp&0x80);
     uint16_t temp2 = sp.get();
-    f.setH((((temp2&0xff)+(imm&0xff)) & 0x0100));
+    int result = temp2 + imm;
+    int carrybits = (temp2 ^ imm ^ (result & 0xFFFF));
+ 
+    f.setH(carrybits & 0x10);
+    //f.setH((((temp2&0xff)+(imm&0xff)) & 0x0100));
+    f.setZ(false);
     f.setN(false);
-    uint32_t carry = (temp2 + imm) & 0x00010000;
-    f.setC(carry);
-    hl.set(temp2+imm);
+    f.setC(carrybits & 0x100);
+    //uint32_t carry = (temp2 + imm) & 0x00010000;
+    //f.setC(carry);
+    hl.set(result & 0xffff);
     cycles = 2;
 }
 
@@ -373,9 +399,9 @@ void CPU::lw_hl_sp() {
 void CPU::add_HL(pairRegister& r) {
     uint16_t HL_val = hl.get();
     uint16_t r_val = r.get();
-    f.setH((((HL_val&0xff)+(r_val&0xff)) & 0x0100));
+    f.setH((((HL_val&0xfff)+(r_val&0xfff)) & 0x1000));
     f.setN(false);
-    uint32_t carry = (HL_val + r_val) & 0x00010000;
+    uint32_t carry = (HL_val + r_val) & 0x10000;
     f.setC(carry);
     hl.set(HL_val+r_val);
     cycles = 1;
@@ -384,9 +410,9 @@ void CPU::add_HL(pairRegister& r) {
 void CPU::add_HLSP() {
     uint16_t HL_val = hl.get();
     uint16_t SP_val = sp.get();
-    f.setH((((HL_val&0xff)+(SP_val&0xff)) & 0x0100));
+    f.setH((((HL_val&0xfff)+(SP_val&0xfff)) & 0x1000));
     f.setN(false);
-    uint32_t carry = (HL_val + SP_val) & 0x00010000;
+    uint32_t carry = (HL_val + SP_val) & 0x10000;
     f.setC(carry);
     hl.set(HL_val+SP_val);
     cycles = 1;
@@ -406,11 +432,17 @@ void CPU::add_SP_imm() {
     uint8_t temp = fetchPC();
     int imm = (temp&0x7f) - (temp&0x80);
     uint16_t temp2 = sp.get();
-    f.setH((((temp2&0xff)+(imm&0xff)) & 0x0100));
+    int result = temp2 + imm;
+    int carrybits = (temp2 ^ imm ^ (result & 0xFFFF));
+    
+    f.setH(carrybits & 0x10);
+    //f.setH((((temp2&0xfff)+(imm&0xfff)) & 0x01000));
+    f.setZ(false);
     f.setN(false);
-    uint32_t carry = (temp2 + imm) & 0x00010000;
-    f.setC(carry);
-    sp.set(temp2+imm);
+    f.setC(carrybits & 0x100);
+    //uint32_t carry = (temp2 + imm) & 0x00010000;
+    //f.setC(carry);
+    sp.set(result);
     cycles = 3;
 }
 
@@ -427,24 +459,24 @@ void CPU::adc(Register_8b& r1, uint8_t r2_val) {
 
 //sub
 void CPU::sub(Register_8b& r1, uint8_t r2_val) {
-    uint8_t r1_val = r1.get();
-    f.setH((((r1_val&0x0f)-(r2_val&0x0f))&0x10) == 0x10);
-    uint16_t carry = (r1_val - r2_val)&0x0100; 
+    int r1_val = r1.get();
+    f.setH(((r1_val&0x0f)-(r2_val&0x0f)) < 0);
+    bool carry = (r1_val - r2_val)<0; 
     f.setN(true);
     f.setZ(r1_val - r2_val == 0);
     f.setC(carry);
-    r1.set(r1_val - r2_val);
+    r1.set((r1_val - r2_val)&0xff);
 }
 
 void CPU::sbc(Register_8b& r1, uint8_t r2_val) {
-    uint8_t r1_val = r1.get();
-    bool carryIn = f.getC();
-    f.setH((((r1_val&0x0f)-(r2_val&0x0f)+carryIn)&0x10) == 0x10);
-    uint16_t carry = (r1_val - r2_val - carryIn)&0x0100; 
-    f.setN(false);
-    f.setZ(r1_val - r2_val - carryIn == 0);
+    int r1_val = r1.get();
+    int carryIn = f.getC();
+    f.setH(((r1_val&0x0f)-(r2_val&0x0f)-carryIn) < 0);
+    bool carry = ((r1_val - r2_val - carryIn) < 0); 
+    f.setN(true);
+    f.setZ(((r1_val - r2_val - carryIn)&0xff) == 0);
     f.setC(carry);
-    r1.set(r1_val - r2_val - carryIn);
+    r1.set((r1_val - r2_val - carryIn)&0xff);
 }
 
 //jump
@@ -477,8 +509,10 @@ void CPU::jp_HL() {
 void CPU::jp(bool cond) {
     if (cond) 
         jp();
-    else 
+    else {
+        pc.set(pc.get()+2);    
         cycles = 2;
+    }
 }
 
 void CPU::call(bool cond) {
@@ -606,7 +640,7 @@ void CPU::bitwise_cp(Register_8b& r1, uint8_t r2_val) {
 
 //cb bitwise
 void CPU::bit(uint8_t rval, int bitIndex) {
-    f.setZ((rval>>bitIndex)&0x01);
+    f.setZ(~(rval>>bitIndex)&0x01);
     f.setN(false);
     f.setH(true);
 }
@@ -688,7 +722,7 @@ void CPU::decode_inst(uint8_t instruction) {
         case 0x04: {inc(b); break;}
         case 0x05: {dec(b); break;}
         case 0x06: {loadimm(b); break;}
-        case 0x07: {rlc(a); break;}
+        case 0x07: {rlc(a); f.setZ(false); break;}
         
         case 0x08: {sw_sp(); break;}
         case 0x09: {add_HL(bc); break;}
@@ -697,7 +731,7 @@ void CPU::decode_inst(uint8_t instruction) {
         case 0x0c: {inc(c); break;}
         case 0x0d: {dec(c); break;}
         case 0x0e: {loadimm(c); break;}
-        case 0x0f: {rrc(a); break;}
+        case 0x0f: {rrc(a); f.setZ(false);  break;}
 
         case 0x10: {break;} //TODO: stop
         case 0x11: {loadimm(de); break;}
@@ -706,7 +740,7 @@ void CPU::decode_inst(uint8_t instruction) {
         case 0x14: {inc(d); break;}
         case 0x15: {dec(d); break;}
         case 0x16: {loadimm(d); break;}
-        case 0x17: {rl(a); break;}
+        case 0x17: {rl(a); f.setZ(false); break;}
         
         case 0x18: {jr(); break;}
         case 0x19: {add_HL(de); break;}
@@ -715,7 +749,7 @@ void CPU::decode_inst(uint8_t instruction) {
         case 0x1c: {inc(e); break;}
         case 0x1d: {dec(e); break;}
         case 0x1e: {loadimm(e); break;}
-        case 0x1f: {rr(a); break;}
+        case 0x1f: {rr(a); f.setZ(false); break;}
 
         case 0x20: {jr(f.getZ()==0); break;}
         case 0x21: {loadimm(hl); break;}
@@ -724,7 +758,7 @@ void CPU::decode_inst(uint8_t instruction) {
         case 0x24: {inc(h); break;}
         case 0x25: {dec(h); break;}
         case 0x26: {loadimm(h); break;}
-        case 0x27: { break; } //TODO: DAA
+        case 0x27: {DAA(); break;} 
 
         case 0x28: {jr(f.getZ()==1); break;}
         case 0x29: {add_HL(hl); break; }

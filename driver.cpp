@@ -3,6 +3,8 @@
 #include <thread>
 #include <chrono>
 
+#define CLOCKSPEED 4194304;
+
 int main(int argc, char **argv) {
     Handler handler;
     handler.mmu.loadROM(argv[1]);
@@ -14,10 +16,11 @@ int main(int argc, char **argv) {
     int i=0;
     for (unsigned long long j=0; j<0xfffffff; j++) {
         //std::this_thread::sleep_for (std::chrono::nanoseconds(900));
-        handler.ppu.tick();
+        
+        handler.ppu.timer_tick();
         if (++i == 4) {
-        handler.cpu.tick();
-        handler.mmu.tick();
+            handler.cpu.tick();
+            handler.mmu.tick();
         i=0;
         }
         //scanf("%s", buf);

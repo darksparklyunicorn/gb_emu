@@ -11,6 +11,7 @@ public:
     void tick();
     void debug();
     void debug2();
+    void wake_halt();
 private:
     int cycles;
     Handler& handler;
@@ -18,10 +19,19 @@ private:
     Register_8b a, b, c, d, e, h, l;
     pairRegister af, bc, de, hl;
     Register_16b pc, sp;
+    uint8_t IMEQueue[2];
+    bool halted;
+
     void decode_inst(uint8_t instruction);
     void decode_cb_inst(uint8_t);
     uint8_t fetchPC();
     uint8_t fetchWord(uint16_t addr);
+
+    void halt();
+    void EI();
+    void DI();
+    void handle_IME_write(); 
+    bool handleIF();
 
     void DAA();
     void NOP();
@@ -89,6 +99,7 @@ private:
      
     void jr();
     void jr(bool cond);
+    void reti();
     void ret();
     void ret(bool cond);
     void jp();

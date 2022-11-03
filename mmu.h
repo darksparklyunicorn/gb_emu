@@ -12,6 +12,7 @@ private:
     void initDMA(uint8_t val);
 public:
     MMU(Handler&);
+    bool IME;
     void init();
     uint8_t loadWord(uint16_t addr);
     void storeWord(uint16_t addr, uint8_t val);

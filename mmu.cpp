@@ -9,6 +9,7 @@ MMU::MMU(Handler& hand) : handler(hand) {}
 
 void MMU::init() {
     dmaCycles = 0;
+    IME = 0;
 }
 
 uint8_t MMU::loadWord(uint16_t addr) {
@@ -28,7 +29,7 @@ void MMU::storeWord(uint16_t addr, uint8_t val) {
         handler.ppu.setRegister(addr-0xff00, val);
         return;
     }
-
+    
     memory[addr] = val;
 
 }

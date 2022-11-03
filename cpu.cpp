@@ -32,13 +32,18 @@ void CPU::tick() {
         cycles--;
         return;
     }
+    if (handleIF())
+        return;
+    if (halted) {
+        wake_halt();
+        return;
+    }
     debug2();
     uint8_t temp = fetchPC();
     decode_inst(temp);
     //printf("%d \n", temp);
-    
-    if (pc.get() == 0xcb44)
-        exit(0);
+    if (IMEQueue[0]-- == 1)
+        handle_IME_write();
 }    
 //instructions
 uint8_t CPU::fetchPC() {
@@ -570,6 +575,11 @@ void CPU::pop_PC() {
     cycles = 2;
 }
 
+void CPU::reti() {
+    ret();
+    handler.mmu.IME = true;
+}
+
 void CPU::ret() {
     pop_PC();
     cycles++;
@@ -710,7 +720,51 @@ void CPU::cpi() {
     cycles = 1;
 }
 
+//interrupts
+void CPU::halt() {
+    halted = true;
+}
 
+void CPU::wake_halt() {
+    uint8_t ie = handler.mmu.loadWord(0xffff);
+    uint8_t iflag = handler.mmu.loadWord(0xff0f);
+    uint8_t temp = ie&iflag;
+    if (temp)
+        halted = false;
+}
+void CPU::EI() {
+    IMEQueue[0] = 2;//ime has 1 instruction delay
+    IMEQueue[1] = true;
+}
+
+void CPU::DI() {
+    IMEQueue[0] = 2;
+    IMEQueue[1] = false;
+}
+
+void CPU::handle_IME_write() {
+    handler.mmu.IME = IMEQueue[1];
+    IMEQueue[0] = 0;
+}
+
+bool CPU::handleIF() {
+    uint8_t ie = handler.mmu.loadWord(0xffff);
+    uint8_t iflag = handler.mmu.loadWord(0xff0f);
+    uint8_t temp = ie&iflag;
+    if (handler.mmu.IME) {   
+        for (int i=0; i<5; i++) {
+            if ((temp>>i)&0x1) {
+                handler.mmu.storeWord(0xff0f, iflag & ~(1<<i));
+                handler.mmu.IME = false;
+                push_PC();
+                pc.set(0x0040 + i*0x8);
+                cycles = 4;
+                return true;
+            }
+        }
+    }
+    return false;
+}
 
 
 void CPU::decode_inst(uint8_t instruction) {
@@ -848,7 +902,7 @@ void CPU::decode_inst(uint8_t instruction) {
         case 0x73: {storeWord(hl.get(), e.get()); break;}
         case 0x74: {storeWord(hl.get(), h.get()); break;}
         case 0x75: {storeWord(hl.get(), l.get()); break;}
-        case 0x76: { break;} //TODO HALT
+        case 0x76: {halt(); break;} 
         case 0x77: {storeWord(hl.get(), a.get()); break;}
         
         case 0x78: {a.set(b.get()); break;}
@@ -938,7 +992,7 @@ void CPU::decode_inst(uint8_t instruction) {
         case 0xc1: {pop(bc); break;}
         case 0xc2: {jp(f.getZ()==0); break;}
         case 0xc3: {jp(); break;}
-        case 0xc4: {call(f.getZ()==0); break;} //TODO call
+        case 0xc4: {call(f.getZ()==0); break;} 
         case 0xc5: {push(bc); break;}
         case 0xc6: {addi(); break;}
         case 0xc7: {rst(0); break;}
@@ -962,7 +1016,7 @@ void CPU::decode_inst(uint8_t instruction) {
         case 0xd7: {rst(2); break;}
         
         case 0xd8: {ret(f.getC()==1); break;}
-        case 0xd9: {ret(); break;} //TODO add reti
+        case 0xd9: {reti(); break;} 
         case 0xda: {jp(f.getC()==1); break;}
         case 0xdb: {break;} //invalid
         case 0xdc: {call(f.getC()==1); break;}
@@ -991,7 +1045,7 @@ void CPU::decode_inst(uint8_t instruction) {
         case 0xf0: {lw_A_imm(fetchPC()); break;}
         case 0xf1: {pop(af); break;}
         case 0xf2: {lw_A_imm(c.get()); break;}
-        case 0xf3: {break;} //TODO DI
+        case 0xf3: {DI(); break;} 
         case 0xf4: {break;} //invalid
         case 0xf5: {push(af); break;}
         case 0xf6: {ori(); break;}
@@ -1000,7 +1054,7 @@ void CPU::decode_inst(uint8_t instruction) {
         case 0xf8: {lw_hl_sp(); break;}
         case 0xf9: {sp.set(hl.get()); cycles = 1; break;}
         case 0xfa: {lw_A_imm16(); break;}
-        case 0xfb: {break;} //TODO implement EI
+        case 0xfb: {EI(); break;} 
         case 0xfc: {break;} //invalid
         case 0xfd: {break;} //invalid
         case 0xfe: {cpi(); break;}

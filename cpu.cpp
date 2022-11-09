@@ -531,7 +531,7 @@ void CPU::call(bool cond) {
 }
 
 void CPU::rst(uint8_t r) {
-    uint16_t addr = fetchWord(1<<r);
+    uint16_t addr = fetchWord(0x8*r);
     push_PC();
     pc.set(addr);
     cycles = 3;    

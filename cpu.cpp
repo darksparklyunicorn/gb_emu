@@ -38,7 +38,7 @@ void CPU::tick() {
         wake_halt();
         return;
     }
-    debug2();
+    //debug2();
     uint8_t temp = fetchPC();
     decode_inst(temp);
     //printf("%d \n", temp);

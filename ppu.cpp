@@ -1,7 +1,14 @@
 #include <stdint.h>
 #include "register.h"
 #include "ppu.h"
+#include "handler.h"
+#define LCDC 0x40
+#define SCY 0x42
+#define SCX 0x43
+#define LY  0x44
 
+PPU::PPU(Handler& h) : handler(h), fetcher(*this) {
+}
 
 void PPU::init() {
     ioreg[0x07].set(0xf8);//tac
@@ -11,6 +18,7 @@ void PPU::init() {
     dots = 0;
     tcounts = 0;
     clockfrac = 1024;
+    fetcher.init();
 }
 
 void PPU::bitsetRegister(uint16_t addr, bool v, int index) {
@@ -53,14 +61,105 @@ void PPU::timer_tick() {
 
 void PPU::pixel_tick() {
     
-    /*
     if (!ioreg[0x40].bitget(7))
         return;
-    if (++dots >= 456) {
-        dots = 0;
-        ioreg[0x44].set(ioreg[0x44].get()+1);
-        if (ioreg[0x44].get() >= 153)
-            ioreg[0x44].set(0);
+    dots++;
+    switch (state) {
+        case 1: {
+                    if (dots < 80)
+                        break;
+                    state = 2;
+                    fetcher.init();
+                    break;
+                }
+        case 2: {
+                    fetcher.tick();
+                    uint16_t pixelData = fetcher.pixelFIFO.front();
+                    fetcher.pixelFIFO.pop();
+                    pixelData = (handler.mmu.loadWord(pixelData) >> (2*pixelData)) & 2;
+                    videobuf[ioreg[LY].get()*144 + x++] = pixelData;
+                    if (x == 144)
+                        state = 3;
+                    break;
+                }
+        case 3: {
+                    if (dots < 456)
+                        break;
+                    ioreg[LY].set(ioreg[LY].get()+1);
+                    state = 1;
+                    if (ioreg[LY].get() == 144)
+                        state = 4;
+                    x = 0;
+                    dots = 0;
+                    break; 
+                }
+        case 4: {
+                    if (dots == 456) {
+                        ioreg[LY].set(ioreg[LY].get()+1);
+                        dots = 0;
+                        if (ioreg[LY].get() == 154) {
+                            state = 1;
+                            ioreg[LY].set(0);
+                        }
+                        break;
+                    }
+                }
     }
-    */
+}
+
+Fetcher::Fetcher(PPU& p) : ppu(p) {
+}
+
+void Fetcher::init() {
+    auto x = (ppu.getRegister(SCX)/8 + ppu.x)&0x1f;
+    auto y = (ppu.getRegister(LY) + ppu.getRegister(SCY))&0xff;
+    y_tileRow = y%8;
+    tileID = 0x9800 + x + y/8 * 0x20;
+    ticks = false;
+    clearQ(pixelFIFO);
+}
+
+void Fetcher::tick() {
+    ticks = !ticks;
+    if (ticks) {
+        switch (state) {
+            case 1: {
+
+                        id = ppu.handler.mmu.loadWord(tileID);
+                        state = 2;
+                        break;
+                    }
+            case 2: {
+                        uint16_t tileAddr = 0x8000 + id*16 + y_tileRow*2;
+                        uint16_t tiledata = ppu.handler.mmu.loadWord(tileAddr);
+                        for (int i=0; i<8; i++) 
+                            buf[i] = (tiledata>>i) & 0x01; 
+                        state = 3;
+                        break;
+                    }
+            case 3: {
+                        uint16_t tileAddr = 0x8001 + id*16 + y_tileRow*2;
+                        uint16_t tiledata = ppu.handler.mmu.loadWord(tileAddr);
+                        for (int i=0; i<8; i++) 
+                            buf[i] |= ((tiledata>>i) & 0x01) * 2; 
+                        state = 4;
+                        break;
+                    }
+            case 4: {
+                        if (pixelFIFO.size() <= 8) {
+                            for (int i=7; i>=0; i--)
+                                pixelFIFO.push(buf[i]);
+                            state = 1; 
+                            tileID++;
+                        }
+                        break;
+                    }
+        }
+    }
+
+}
+
+void Fetcher::clearQ(std::queue<int>& q) {
+    while (!q.empty())
+        q.pop();
 }

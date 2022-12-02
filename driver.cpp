@@ -18,6 +18,7 @@ int main(int argc, char **argv) {
         //std::this_thread::sleep_for (std::chrono::nanoseconds(900));
         
         handler.ppu.timer_tick();
+        handler.ppu.pixel_tick();
         if (++i == 4) {
             handler.cpu.tick();
             handler.mmu.tick();

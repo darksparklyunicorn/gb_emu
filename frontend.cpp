@@ -5,7 +5,7 @@
 
 int main(int argc, char **argv)
 {
-    Handler handler;
+    Handler handler(false);
     handler.init(argv[1]);
     if(SDL_Init(SDL_INIT_VIDEO) < 0)
     {
@@ -30,7 +30,7 @@ int main(int argc, char **argv)
           return -1;
           }
           */
-    SDL_Renderer *renderer = SDL_CreateRenderer(window, -1, SDL_RENDERER_ACCELERATED);
+    SDL_Renderer *renderer = SDL_CreateRenderer(window, -1, SDL_RENDERER_SOFTWARE);
     if (!renderer) { 
         std::cout << "failed to create renderer\n";
         return -1;
@@ -57,8 +57,8 @@ int main(int argc, char **argv)
         return -1;
     }
     uint8_t frameBuffer[160*144*4] = {};
-    for (int i=0; i<20; i++){ 
-        for (int j=0; j<20; j++) {
+    for (int i=100; i<155; i++){ 
+        for (int j=100; j<139; j++) {
             frameBuffer[(i+j*160)*4] = 0xff;
             frameBuffer[(i+j*160)*4+1] = 0xff;
             frameBuffer[(i+j*160)*4+2] = 0xff;
@@ -66,7 +66,6 @@ int main(int argc, char **argv)
         }
     }
 
-    SDL_Delay(2000);
 
     //callback
     int pitch = 160;
@@ -76,6 +75,12 @@ int main(int argc, char **argv)
     SDL_UnlockTexture(texture);
 
 
+    SDL_RenderClear(renderer);
+    SDL_RenderCopy(renderer, texture, NULL, NULL);
+    SDL_RenderPresent(renderer);
+
+    SDL_Delay(2000);
+
     Uint64 start_count, delta_count;
     long double delta_t, perf_freq;
     perf_freq = SDL_GetPerformanceFrequency();
@@ -84,6 +89,7 @@ int main(int argc, char **argv)
     //main loop
     bool should_quit = false;
     SDL_Event e;
+    int dots2;
     while (!should_quit) {
         start_count = SDL_GetPerformanceCounter();
         
@@ -94,13 +100,24 @@ int main(int argc, char **argv)
             }
         }
         while (handler.frame_callback(frameBuffer)) {
-        handler.tick();
+            dots2++;
+            if (dots2 >= 100000)
+                fprintf(stderr, "handler fucked up, %d\n", dots2);
 
+            handler.tick();
+            while (SDL_PollEvent(&e) != 0) {
+                if (e.type == SDL_QUIT) {
+                    should_quit = true;
+                    fprintf(stderr, "quitting");
+                    goto end;
+                }
+            }
         }
+        dots2 = 0;
 
         /*
-        if (!handler.frame_callback(frameBuffer)) {
-        */   
+           if (!handler.frame_callback(frameBuffer)) {
+           */   
 
             //callback
             pitch = 160;
@@ -110,17 +127,25 @@ int main(int argc, char **argv)
             SDL_UnlockTexture(texture);
 
 
+                fprintf(stderr, "before render");
 
-            SDL_RenderClear(renderer);
-            SDL_RenderCopy(renderer, texture, NULL, NULL);
+            if (SDL_RenderClear(renderer)) {
+                fprintf(stderr, "clear failed\n");
+                return -1;
+            }
+            if (SDL_RenderCopy(renderer, texture, NULL, NULL)) {
+                fprintf(stderr, "rendercopy failed\n");
+                return -1;
+            }
             SDL_RenderPresent(renderer);
-
+            fprintf(stderr, "after render\n");
+            
             delta_count = SDL_GetPerformanceCounter() - start_count;
             delta_t = delta_count / perf_freq;
-            SDL_Delay(std::max((int)std::floor(16.74-delta_t), 0));
+//            SDL_Delay(std::max((int)std::floor(16.74-delta_t), 0));
 //        }
     }
-
+end:
     SDL_DestroyTexture(texture);
     SDL_DestroyRenderer(renderer);
     SDL_DestroyWindow(window);

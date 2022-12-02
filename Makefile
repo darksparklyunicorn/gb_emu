@@ -34,7 +34,11 @@ frontend.o: frontend.cpp
 clean:
 	rm -f *.o
 .PHONY: backend
-backend: clean main
+backend:
+	$(MAKE) clean
+	$(MAKE) main
 
 .PHONY: all
-all: clean gb_emu
+all:
+	$(MAKE) clean
+	$(MAKE) gb_emu

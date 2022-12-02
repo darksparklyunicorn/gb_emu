@@ -5,7 +5,9 @@
 #include <stdio.h>
 #include <iostream>
 
-MMU::MMU(Handler& hand) : memory{}, handler(hand) {} 
+MMU::MMU(Handler& hand) : memory{}, handler(hand) {
+    std::fill(memory, memory+sizeof(memory), 0);
+} 
 
 void MMU::init() {
     dmaCycles = 0;

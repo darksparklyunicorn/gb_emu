@@ -7,7 +7,8 @@
 
 class Handler {
 public:
-    Handler();
+    bool debug;
+    Handler(bool);
     CPU cpu;
     MMU mmu;
     PPU ppu;

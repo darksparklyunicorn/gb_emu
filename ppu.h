@@ -28,6 +28,7 @@ private:
     void bitsetRegister(uint16_t addr, bool v, int index);
     //uint16_t getTile();
     void render_scanline();
+    void statmode(int);
     bool hasNewFrame;
     Fetcher fetcher;
     friend class Fetcher;

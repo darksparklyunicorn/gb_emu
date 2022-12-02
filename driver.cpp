@@ -7,23 +7,13 @@
 
 int main(int argc, char **argv) {
     Handler handler;
-    handler.mmu.loadROM(argv[1]);
-    handler.cpu.init();
-    handler.mmu.init();
-    handler.ppu.init();
+    handler.init(argv[1]);
+    uint8_t imgbuf[160*144*4];
     //handler.cpu.debug2();
-    char buf[10];
-    int i=0;
-    for (unsigned long long j=0; j<0xfffffff; j++) {
+    for (unsigned long long j=0; j<0x8ffffff; j++) {
         //std::this_thread::sleep_for (std::chrono::nanoseconds(900));
-        
-        handler.ppu.timer_tick();
-        handler.ppu.pixel_tick();
-        if (++i == 4) {
-            handler.cpu.tick();
-            handler.mmu.tick();
-        i=0;
-        }
+        handler.tick();
+        handler.frame_callback(imgbuf);
         //scanf("%s", buf);
     }
 }    

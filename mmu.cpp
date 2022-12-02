@@ -5,10 +5,11 @@
 #include <stdio.h>
 #include <iostream>
 
-MMU::MMU(Handler& hand) : handler(hand) {} 
+MMU::MMU(Handler& hand) : memory{}, handler(hand) {} 
 
 void MMU::init() {
     dmaCycles = 0;
+    dots = 0;
     IME = 0;
 }
 
@@ -57,6 +58,9 @@ void MMU::loadROM(char* str) {
     FILE* fp = fopen(str, "rb");
     uint8_t* p = (uint8_t*)memory;
     while (fread(p++, sizeof(uint8_t), 1,fp));
-    fclose(fp);    
+    
+    fclose(fp);  
+
+
 }
 

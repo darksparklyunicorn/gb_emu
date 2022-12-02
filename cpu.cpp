@@ -4,7 +4,7 @@
 #include "register.h"
 #include "handler.h"
 
-CPU::CPU(Handler& hand) : handler(hand), af(a,f), bc(b,c), de(d,e), hl(h,l) {
+CPU::CPU(Handler& hand) : handler(hand), af(a,f), bc(b,c), de(d,e), hl(h,l), IMEQueue{}, halted(0) {
 }
 
 void CPU::debug2() {

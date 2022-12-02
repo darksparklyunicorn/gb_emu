@@ -43,6 +43,7 @@ class Register_16b {
 protected:
     uint16_t value = 0x0;
 public:
+    Register_16b() : value(0) {}
     void set(uint16_t v);
     uint16_t get();
 };

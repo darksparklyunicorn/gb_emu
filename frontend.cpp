@@ -1,8 +1,10 @@
-#include <SDL2/SDL.h>
+#include <SDL2/SDL.hi>
+#include "handler.h"
 #include <iostream>
 
 int main(int argc, char **argv)
 {
+    Handler handler;
     if(SDL_Init(SDL_INIT_VIDEO) < 0)
     {
         std::cout << "Failed to initialize the SDL2 library\n";

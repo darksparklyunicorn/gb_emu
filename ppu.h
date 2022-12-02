@@ -22,12 +22,13 @@ public:
 class PPU {
 private:
     Handler& handler;
-    uint8_t videobuf[5760];
+    uint8_t videobuf[160*144*4]; //argb8888 format
     IORegister ioreg[0x81];
-    int dots, tcounts, clockfrac, divcounts, state;
+    int dots, tcounts, clockfrac, divcounts, pstate;
     void bitsetRegister(uint16_t addr, bool v, int index);
     //uint16_t getTile();
     void render_scanline();
+    bool hasNewFrame;
     Fetcher fetcher;
     friend class Fetcher;
 public:
@@ -37,7 +38,7 @@ public:
     void pixel_tick();
     uint8_t getRegister(uint16_t addr);
     void setRegister(uint16_t addr, uint8_t v);
-    uint8_t* video_callback();
+    int video_callback(uint8_t *);
     uint16_t x;
 };
     

@@ -8,7 +8,7 @@
 #define SCX 0x43
 #define LY  0x44
 
-PPU::PPU(Handler& h) : handler(h), ioreg{}, pstate(1), fetcher(*this) {
+PPU::PPU(Handler& h) : handler(h), ioreg{}, pstate(1), fetcher(*this), x(0) {
 }
 
 int PPU::video_callback(uint8_t *callback_buffer) {
@@ -89,11 +89,12 @@ void PPU::pixel_tick() {
                         return;
                     uint16_t pixelData = fetcher.pixelFIFO.front();
                     fetcher.pixelFIFO.pop();
-                    pixelData = (handler.mmu.loadWord(pixelData) >> (2*pixelData)) & 2;
-                    videobuf[(ioreg[LY].get()*160 + x)*4] = pixelData;
+                    pixelData = ((handler.mmu.loadWord(pixelData) >> (2*pixelData)) & 2) *0x3f;
+                    videobuf[(ioreg[LY].get()*160 + x)*4] = 0xff;
                     videobuf[(ioreg[LY].get()*160 + x)*4 +1] = pixelData;
                     videobuf[(ioreg[LY].get()*160 + x)*4 +2] = pixelData;
                     videobuf[(ioreg[LY].get()*160 + x)*4 +3] = pixelData;
+
                     x++;
                     if (x == 160) {
                         pstate = 3;
@@ -110,9 +111,9 @@ void PPU::pixel_tick() {
 
                     if (ioreg[LY].get() >= 144) {
                         pstate = 4;
-                        hasNewFrame = true;
+                        ioreg[0x0f].bitset(1,1);
                     }
-                                        break; 
+                    break; 
                 }
         case 4: {
                     if (dots == 456) {
@@ -121,6 +122,7 @@ void PPU::pixel_tick() {
                         if (ioreg[LY].get() >= 154) {
                             pstate = 1;
                             ioreg[LY].set(0);
+                            hasNewFrame = true;
                         }
                     }
                     break;
@@ -166,6 +168,7 @@ void Fetcher::tick() {
                         break;
                     }
             case 4: {
+
                         if (pixelFIFO.size() <= 8) {
                             for (int i=7; i>=0; i--)
                                 pixelFIFO.push(buf[i]);

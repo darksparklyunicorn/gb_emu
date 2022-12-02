@@ -1,10 +1,12 @@
-#include <SDL2/SDL.hi>
+#include <SDL2/SDL.h>
 #include "handler.h"
 #include <iostream>
+#include <algorithm>
 
 int main(int argc, char **argv)
 {
     Handler handler;
+    handler.init(argv[1]);
     if(SDL_Init(SDL_INIT_VIDEO) < 0)
     {
         std::cout << "Failed to initialize the SDL2 library\n";
@@ -44,7 +46,7 @@ int main(int argc, char **argv)
         return -1;
     }
     for (Uint32 i = 0; i<info.num_texture_formats; i++) {
-        //    std::cout << SDL_GetPixelFormatName(info.texture_formats[i]) << std::endl;
+            std::cout << SDL_GetPixelFormatName(info.texture_formats[i]) << std::endl;
     }
 
     SDL_Texture *texture = SDL_CreateTexture(renderer, SDL_PIXELFORMAT_ARGB8888, 
@@ -63,6 +65,9 @@ int main(int argc, char **argv)
             frameBuffer[(i+j*160)*4+3] = 0xff;
         }
     }
+
+    SDL_Delay(2000);
+
     //callback
     int pitch = 160;
     void *texture_pixels = nullptr;
@@ -70,18 +75,50 @@ int main(int argc, char **argv)
     memcpy(texture_pixels, frameBuffer, 160*4*144);
     SDL_UnlockTexture(texture);
 
-    //render
+
+    Uint64 start_count, delta_count;
+    long double delta_t, perf_freq;
+    perf_freq = SDL_GetPerformanceFrequency();
+
+    fprintf(stderr, "before loop");
+    //main loop
     bool should_quit = false;
     SDL_Event e;
     while (!should_quit) {
+        start_count = SDL_GetPerformanceCounter();
+        
         while (SDL_PollEvent(&e) != 0) {
             if (e.type == SDL_QUIT) {
                 should_quit = true;
+                fprintf(stderr, "quitting");
             }
         }
-        SDL_RenderClear(renderer);
-        SDL_RenderCopy(renderer, texture, NULL, NULL);
-        SDL_RenderPresent(renderer);
+        while (handler.frame_callback(frameBuffer)) {
+        handler.tick();
+
+        }
+
+        /*
+        if (!handler.frame_callback(frameBuffer)) {
+        */   
+
+            //callback
+            pitch = 160;
+            texture_pixels = nullptr;
+            SDL_LockTexture(texture, NULL, &texture_pixels, &pitch);
+            memcpy(texture_pixels, frameBuffer, 160*4*144);
+            SDL_UnlockTexture(texture);
+
+
+
+            SDL_RenderClear(renderer);
+            SDL_RenderCopy(renderer, texture, NULL, NULL);
+            SDL_RenderPresent(renderer);
+
+            delta_count = SDL_GetPerformanceCounter() - start_count;
+            delta_t = delta_count / perf_freq;
+            SDL_Delay(std::max((int)std::floor(16.74-delta_t), 0));
+//        }
     }
 
     SDL_DestroyTexture(texture);

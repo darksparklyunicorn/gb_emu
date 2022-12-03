@@ -13,23 +13,9 @@
 PPU::PPU(Handler& h) : handler(h), ioreg{}, pstate(1), fetcher(*this), x(0) {
 }
 
-int PPU::video_callback(uint8_t *callback_buffer) {
-    if (!ioreg[LCDC].bitget(7)) {
-        std::fill(videobuf, videobuf+sizeof(videobuf), 0);
-        hasNewFrame = true;
-    }
-    if (hasNewFrame) {
-        memcpy(callback_buffer, videobuf, sizeof(videobuf));
-        //fprintf(stderr, "%d, %d, %d, %d\n",  videobuf[0], videobuf[1], videobuf[2], videobuf[3]);
-        hasNewFrame = false;
-        return 0;
-    } 
-    return -1;
-}
-
 
 void PPU::init() {
-    ioreg[0x00].set(0xcf);
+/*    ioreg[0x00].set(0xcf);
     ioreg[0x01].set(0x00);
     ioreg[0x02].set(0x7e);
     ioreg[0x04].set(0xab);
@@ -44,7 +30,8 @@ void PPU::init() {
     ioreg[0x44].set(0x00);//ly
     ioreg[0x45].set(0x00);//lyc
     ioreg[0x47].set(0xfc);//bgp
-
+*/
+    ioreg[0x00].set(0xff);
     dots = 0;
     tcounts = 0;
     clockfrac = 1024;
@@ -151,7 +138,7 @@ void PPU::pixel_tick() {
                 }
         case 4: {
                     statmode(1);
-                    if (dots == 456) {
+                    if (dots >= 456) {
                         ioreg[LY].set(ioreg[LY].get()+1);
                         dots = 0;
                         if (ioreg[LY].get() >= 154) {
@@ -177,7 +164,7 @@ void Fetcher::init() {
     auto x = (ppu.getRegister(SCX)/8 + ppu.x/8)&0x1f;
     auto y = (ppu.getRegister(LY) + ppu.getRegister(SCY))&0xff;
     y_tileRow = y%8;
-    tileID = (ppu.ioreg[LCDC].bitget(3)? 0x9c00:0x9800) + x + (y/8) * 0x20;
+    tileID = ((ppu.ioreg[LCDC].bitget(3)) ? 0x9c00:0x9800) + x + (y/8) * 0x20;
     ticks = false;
     clearQ(pixelFIFO);
 }
@@ -192,7 +179,8 @@ void Fetcher::tick() {
                         break;
                     }
             case 2: {
-                        uint16_t tileAddr = 0x8000 + id*16 + y_tileRow*2;
+                        tileAddr = ((ppu.ioreg[LCDC].bitget(4))? id*16 : 0x1000 +16*((id&0x7f)-(id&0x80))) 
+                            +y_tileRow*2 + 0x8000;
                         uint16_t tiledata = ppu.handler.mmu.loadWord(tileAddr);
                         for (int i=0; i<8; i++) 
                             buf[i] = (tiledata>>i) & 0x01; 
@@ -200,7 +188,7 @@ void Fetcher::tick() {
                         break;
                     }
             case 3: {
-                        uint16_t tileAddr = 0x8001 + id*16 + y_tileRow*2;
+                        tileAddr++;
                         uint16_t tiledata = ppu.handler.mmu.loadWord(tileAddr);
                         for (int i=0; i<8; i++) 
                             buf[i] |= ((tiledata>>i) & 0x01) * 2; 

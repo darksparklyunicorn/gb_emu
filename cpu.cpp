@@ -20,12 +20,14 @@ void CPU::debug() {
 }
 void CPU::init() {
     cycles=0;
-    pc.set(0x0100);
+    pc.set(0x0000);
+   /* 
     sp.set(0xfffe);
     af.set(0x01b0);
     bc.set(0x0013);
     de.set(0x00d8);
     hl.set(0x014d);
+    */
 }
 void CPU::tick() {
     if (cycles > 0) {

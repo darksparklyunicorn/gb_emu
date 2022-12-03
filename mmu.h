@@ -10,6 +10,8 @@ private:
     Handler& handler;
     int dmaCycles, dmaStart, dots;
     void initDMA(uint8_t val);
+    uint8_t bootROM[0x100];
+    bool using_bootROM;
 public:
     MMU(Handler&);
     bool IME;

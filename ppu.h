@@ -1,6 +1,7 @@
 #pragma once
 #include "register.h"
 #include <queue>
+#include <string.h>
 
 class Handler;
 class PPU;
@@ -8,7 +9,7 @@ class PPU;
 class Fetcher {
 private: 
     PPU& ppu;
-    uint16_t y_tileRow, id, tileID, state;
+    uint16_t y_tileRow, id, tileID, state, tileAddr;
     uint8_t buf[8];
     void clearQ(std::queue<int>&);
     bool ticks;
@@ -39,7 +40,18 @@ public:
     void pixel_tick();
     uint8_t getRegister(uint16_t addr);
     void setRegister(uint16_t addr, uint8_t v);
-    int video_callback(uint8_t *);
+    inline int video_callback(uint8_t *);
     uint16_t x;
 };
-    
+ 
+inline int PPU::video_callback(uint8_t *callback_buffer) {
+    if (hasNewFrame) {
+        memcpy(callback_buffer, videobuf, sizeof(videobuf));
+        //fprintf(stderr, "%d, %d, %d, %d\n",  videobuf[0], videobuf[1], videobuf[2], videobuf[3]);
+        hasNewFrame = false;
+        return 0;
+    } 
+    return -1;
+}
+
+   

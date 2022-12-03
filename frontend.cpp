@@ -46,7 +46,7 @@ int main(int argc, char **argv)
         return -1;
     }
     for (Uint32 i = 0; i<info.num_texture_formats; i++) {
-            std::cout << SDL_GetPixelFormatName(info.texture_formats[i]) << std::endl;
+        std::cout << SDL_GetPixelFormatName(info.texture_formats[i]) << std::endl;
     }
 
     SDL_Texture *texture = SDL_CreateTexture(renderer, SDL_PIXELFORMAT_ARGB8888, 
@@ -81,18 +81,18 @@ int main(int argc, char **argv)
 
     SDL_Delay(2000);
 
-    Uint64 start_count, delta_count;
-    long double delta_t, perf_freq;
-    perf_freq = SDL_GetPerformanceFrequency();
-
-    fprintf(stderr, "before loop");
+    Uint64 start_count, delta_count, perf_freq, start_total;
+    int delta_t;
+    perf_freq = SDL_GetPerformanceFrequency()/1000;
+    start_total = SDL_GetPerformanceCounter();
+    fprintf(stderr, "before loop, %I64d", SDL_GetPerformanceFrequency());
     //main loop
     bool should_quit = false;
     SDL_Event e;
-    int dots2;
+    Uint64 dots2 = 0;
     while (!should_quit) {
         start_count = SDL_GetPerformanceCounter();
-        
+
         while (SDL_PollEvent(&e) != 0) {
             if (e.type == SDL_QUIT) {
                 should_quit = true;
@@ -100,52 +100,42 @@ int main(int argc, char **argv)
             }
         }
         while (handler.frame_callback(frameBuffer)) {
-            dots2++;
-            if (dots2 >= 100000)
-                fprintf(stderr, "handler fucked up, %d\n", dots2);
-
+             dots2++;
+            /*          if (dots2 >= 100000)
+                        fprintf(stderr, "handler fucked up, %d\n", dots2);
+                        */
             handler.tick();
-            while (SDL_PollEvent(&e) != 0) {
-                if (e.type == SDL_QUIT) {
-                    should_quit = true;
-                    fprintf(stderr, "quitting");
-                    goto end;
-                }
-            }
         }
-        dots2 = 0;
-
-        /*
-           if (!handler.frame_callback(frameBuffer)) {
-           */   
-
-            //callback
-            pitch = 160;
-            texture_pixels = nullptr;
-            SDL_LockTexture(texture, NULL, &texture_pixels, &pitch);
-            memcpy(texture_pixels, frameBuffer, 160*4*144);
-            SDL_UnlockTexture(texture);
+        //dots2 = 0;
 
 
-                fprintf(stderr, "before render");
+        //callback
+        pitch = 160;
+        texture_pixels = nullptr;
+        SDL_LockTexture(texture, NULL, &texture_pixels, &pitch);
+        memcpy(texture_pixels, frameBuffer, 160*4*144);
+        SDL_UnlockTexture(texture);
 
-            if (SDL_RenderClear(renderer)) {
-                fprintf(stderr, "clear failed\n");
-                return -1;
-            }
-            if (SDL_RenderCopy(renderer, texture, NULL, NULL)) {
-                fprintf(stderr, "rendercopy failed\n");
-                return -1;
-            }
-            SDL_RenderPresent(renderer);
-            fprintf(stderr, "after render\n");
-            
-            delta_count = SDL_GetPerformanceCounter() - start_count;
-            delta_t = delta_count / perf_freq;
-//            SDL_Delay(std::max((int)std::floor(16.74-delta_t), 0));
-//        }
+
+        //        fprintf(stderr, "before render");
+
+        if (SDL_RenderClear(renderer)) {
+            fprintf(stderr, "clear failed\n");
+            return -1;
+        }
+        if (SDL_RenderCopy(renderer, texture, NULL, NULL)) {
+            fprintf(stderr, "rendercopy failed\n");
+            return -1;
+        }
+        SDL_RenderPresent(renderer);
+        //  fprintf(stderr, "after render\n");
+
+        delta_count = SDL_GetPerformanceCounter() - start_count;
+        delta_t = delta_count / perf_freq;
+        SDL_Delay(std::max(16-delta_t, 0));
+        fprintf(stderr, "%I64d\n", delta_count);
     }
-end:
+    fprintf(stderr, "dots: %I64d, time: %I64d\n", dots2, (SDL_GetPerformanceCounter() - start_total)/perf_freq);
     SDL_DestroyTexture(texture);
     SDL_DestroyRenderer(renderer);
     SDL_DestroyWindow(window);

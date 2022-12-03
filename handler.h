@@ -15,8 +15,11 @@ public:
     int ticks;
     inline void tick();
     inline void init(char *);
-    int frame_callback(uint8_t *); //returns 0 on successful callback, 1 if no frame
+    inline int frame_callback(uint8_t *); //returns 0 on successful callback, 1 if no frame
 };
+int Handler::frame_callback(uint8_t * buf) {
+    return ppu.video_callback(buf);
+}
 
 void Handler::init(char *romPath) {
     mmu.loadROM(romPath);

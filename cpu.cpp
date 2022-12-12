@@ -8,7 +8,8 @@ CPU::CPU(Handler& hand) : handler(hand), af(a,f), bc(b,c), de(d,e), hl(h,l), IME
 }
 
 void CPU::debug2() {
-    fprintf(stderr,"A: %02X F: %02X B: %02X C: %02X D: %02X E: %02X H: %02X L: %02X SP: %04X PC: 00:%04X (%02X %02X %02X %02X)\n", a.get(), f.get(), b.get(), c.get(), d.get(), e.get(), h.get(), l.get(), sp.get(), pc.get(), fetchWord(pc.get()), fetchWord(pc.get()+1), fetchWord(pc.get()+2) , fetchWord(pc.get()+3)); 
+    fprintf(stderr,"A: %02X F: %02X B: %02X C: %02X D: %02X E: %02X H: %02X L: %02X SP: %04X PC: 00:%04X (%02X %02X %02X %02X), ie: %02X if: %02X\n", 
+            a.get(), f.get(), b.get(), c.get(), d.get(), e.get(), h.get(), l.get(), sp.get(), pc.get(), fetchWord(pc.get()), fetchWord(pc.get()+1), fetchWord(pc.get()+2) , fetchWord(pc.get()+3), fetchWord(0xffff), fetchWord(0xff0f)); 
 }
 
 void CPU::debug() {
@@ -534,7 +535,7 @@ void CPU::call(bool cond) {
 }
 
 void CPU::rst(uint8_t r) {
-    uint16_t addr = fetchWord(0x8*r);
+    uint16_t addr = 0x8*r;
     push_PC();
     pc.set(addr);
     cycles = 3;    

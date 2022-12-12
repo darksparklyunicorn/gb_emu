@@ -59,8 +59,8 @@ void MMU::storeWord(uint16_t addr, uint8_t val) {
         handler.ppu.setRegister(addr-0xff00, val);
         return;
     }
-    if (addr >= 0x9800 && addr <= 0x9bff)
-        fprintf(stderr, "wrote to tilemap\n");
+//    if (addr >= 0x9800 && addr <= 0x9bff)
+//        fprintf(stdout, "wrote to tilemap\n");
     
     memory[addr] = val;
 

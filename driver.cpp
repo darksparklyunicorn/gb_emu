@@ -15,9 +15,11 @@ int main(int argc, char **argv) {
     for (unsigned long long j=0; j<0x5ffffff; j++) {
         //std::this_thread::sleep_for (std::chrono::nanoseconds(900));
         handler.tick();
-        if (!handler.frame_callback(imgbuf))
+        /* if (!handler.frame_callback(imgbuf))
             fprintf(stderr, "%d", imgbuf[j%160*144*4]);
         //scanf("%s", buf);
+        
+        */
     }
     auto end = std::chrono::system_clock::now();
 

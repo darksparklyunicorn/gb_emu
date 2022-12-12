@@ -26,7 +26,7 @@ int main(int argc, char **argv)
     }
 
     SDL_Window *window = SDL_CreateWindow("SDL2 Window", SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED, 
-            160, 144, SDL_WINDOW_RESIZABLE);
+            4*160, 4*144, SDL_WINDOW_RESIZABLE);
 
     if(!window)
     {
@@ -144,7 +144,7 @@ int main(int argc, char **argv)
 
         delta_count = SDL_GetPerformanceCounter() - start_count;
         delta_t = delta_count / perf_freq;
-        //SDL_Delay(std::max(16-delta_t, 0));
+        SDL_Delay(std::max(16-delta_t, 0));
         //fprintf(stderr, "%I64d\n", delta_count);
     }
 //    fprintf(stderr, "dots: %I64d, time: %I64d\n", dots2, (SDL_GetPerformanceCounter() - start_total)/perf_freq);

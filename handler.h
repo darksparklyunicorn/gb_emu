@@ -13,6 +13,7 @@ public:
     MMU mmu;
     PPU ppu;
     int ticks;
+    void getTileMap(uint8_t *);
     inline void tick();
     inline void init(char *);
     inline int frame_callback(uint8_t *); //returns 0 on successful callback, 1 if no frame

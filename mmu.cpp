@@ -32,6 +32,7 @@ void MMU::init() {
     dots = 0;
     IME = 0;
     using_bootROM = true;
+    memory[0x9800 + 4*0x20 + 20] = 10;
 }
 
 uint8_t MMU::loadWord(uint16_t addr) { 
@@ -44,7 +45,6 @@ uint8_t MMU::loadWord(uint16_t addr) {
     return memory[addr];
 }
 void MMU::storeWord(uint16_t addr, uint8_t val) {
-
     if (addr == 0xff46)
         initDMA(val);
     if (addr == 0xff40 && ~val&0x80)
@@ -59,6 +59,8 @@ void MMU::storeWord(uint16_t addr, uint8_t val) {
         handler.ppu.setRegister(addr-0xff00, val);
         return;
     }
+    if (addr >= 0x9800 && addr <= 0x9bff)
+        fprintf(stderr, "wrote to tilemap\n");
     
     memory[addr] = val;
 

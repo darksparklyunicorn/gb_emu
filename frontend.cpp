@@ -3,10 +3,22 @@
 #include <iostream>
 #include <algorithm>
 
+void saveTileMap(Handler& hand) {
+    uint8_t vbuf[256*256*4];
+    hand.getTileMap(vbuf);
+    SDL_Surface *sur =  SDL_CreateRGBSurfaceWithFormatFrom(vbuf, 256, 256, 32, 4*256, SDL_PIXELFORMAT_ARGB8888);
+    if (!sur) {
+        fprintf(stderr, "could not create surface\n");
+        exit(1);
+    }
+
+    SDL_SaveBMP(sur, "tilemap.bmp");
+}
+
 int main(int argc, char **argv)
 {
-    Handler handler(false);
-    handler.init(argv[1]);
+    Handler handler(!strcmp(argv[1], "debug"));
+    handler.init(argv[2]);
     if(SDL_Init(SDL_INIT_VIDEO) < 0)
     {
         std::cout << "Failed to initialize the SDL2 library\n";
@@ -100,13 +112,13 @@ int main(int argc, char **argv)
             }
         }
         while (handler.frame_callback(frameBuffer)) {
-             dots2++;
-            /*          if (dots2 >= 100000)
-                        fprintf(stderr, "handler fucked up, %d\n", dots2);
-                        */
+            dots2++;
+            if (dots2 == 65746996)
+                saveTileMap(handler);
+
             handler.tick();
         }
-        //dots2 = 0;
+
 
 
         //callback
@@ -132,10 +144,10 @@ int main(int argc, char **argv)
 
         delta_count = SDL_GetPerformanceCounter() - start_count;
         delta_t = delta_count / perf_freq;
-        SDL_Delay(std::max(16-delta_t, 0));
-        fprintf(stderr, "%I64d\n", delta_count);
+        //SDL_Delay(std::max(16-delta_t, 0));
+        //fprintf(stderr, "%I64d\n", delta_count);
     }
-    fprintf(stderr, "dots: %I64d, time: %I64d\n", dots2, (SDL_GetPerformanceCounter() - start_total)/perf_freq);
+//    fprintf(stderr, "dots: %I64d, time: %I64d\n", dots2, (SDL_GetPerformanceCounter() - start_total)/perf_freq);
     SDL_DestroyTexture(texture);
     SDL_DestroyRenderer(renderer);
     SDL_DestroyWindow(window);

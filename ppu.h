@@ -9,9 +9,9 @@ class PPU;
 class Fetcher {
 private: 
     PPU& ppu;
-    uint16_t y_tileRow, id, tileID, state, tileAddr;
+    uint16_t x, init_ppu_x, tilecount, y, y_tileRow, id, tileID, state, tileAddr;
     uint8_t buf[8];
-    void clearQ(std::queue<int>&);
+    void clearQ();
     bool ticks;
 public:
     std::queue<int> pixelFIFO;

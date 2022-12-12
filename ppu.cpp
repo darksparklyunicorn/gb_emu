@@ -15,26 +15,27 @@ PPU::PPU(Handler& h) : handler(h), ioreg{}, pstate(1), fetcher(*this), x(0) {
 
 
 void PPU::init() {
-/*    ioreg[0x00].set(0xcf);
-    ioreg[0x01].set(0x00);
-    ioreg[0x02].set(0x7e);
-    ioreg[0x04].set(0xab);
-    ioreg[0x05].set(0x00);
-    ioreg[0x06].set(0x00);
-    ioreg[0x07].set(0xf8);
-    ioreg[0x0f].set(0xe1);
-    ioreg[0x40].set(0x91);//lcdc
-    ioreg[0x41].set(0x85);//stat
-    ioreg[0x42].set(0x00);//scy
-    ioreg[0x43].set(0x00);//scx
-    ioreg[0x44].set(0x00);//ly
-    ioreg[0x45].set(0x00);//lyc
-    ioreg[0x47].set(0xfc);//bgp
-*/
+    /*    ioreg[0x00].set(0xcf);
+          ioreg[0x01].set(0x00);
+          ioreg[0x02].set(0x7e);
+          ioreg[0x04].set(0xab);
+          ioreg[0x05].set(0x00);
+          ioreg[0x06].set(0x00);
+          ioreg[0x07].set(0xf8);
+          ioreg[0x0f].set(0xe1);
+          ioreg[0x40].set(0x91);//lcdc
+          ioreg[0x41].set(0x85);//stat
+          ioreg[0x42].set(0x00);//scy
+          ioreg[0x43].set(0x00);//scx
+          ioreg[0x44].set(0x00);//ly
+          ioreg[0x45].set(0x00);//lyc
+          ioreg[0x47].set(0xfc);//bgp
+          */
     ioreg[0x00].set(0xff);
     dots = 0;
     tcounts = 0;
     clockfrac = 1024;
+    std::fill(videobuf, videobuf+(160*144*4), 120);
     fetcher.init();
 }
 
@@ -43,6 +44,8 @@ void PPU::bitsetRegister(uint16_t addr, bool v, int index) {
 }
 
 uint8_t PPU::getRegister(uint16_t addr) {
+    if (addr == 0x00)
+        return 0xcf;
     return ioreg[addr].get();
 }
 
@@ -82,7 +85,7 @@ void PPU::statmode(int mode) {
 }
 
 void PPU::pixel_tick() {
-    
+
     if (!ioreg[0x40].bitget(7)) 
         return;
     dots++;
@@ -100,24 +103,27 @@ void PPU::pixel_tick() {
                     fetcher.tick();
                     if (fetcher.pixelFIFO.size() <= 8)
                         return;
-                    uint8_t pixelData = fetcher.pixelFIFO.front();
-                    fetcher.pixelFIFO.pop();
-                    pixelData = 0xff - ((ioreg[BGP].get() >> (2*pixelData)) & 0x3) *85;
-                    videobuf[(ioreg[LY].get()*160 + x)*4] = pixelData;
-                    videobuf[(ioreg[LY].get()*160 + x)*4 +1] = pixelData;
-                    videobuf[(ioreg[LY].get()*160 + x)*4 +2] = pixelData;
-                    videobuf[(ioreg[LY].get()*160 + x)*4 +3] = 0xff;
-/*
-                    fprintf(stderr, "%d, %d, %d, %d\n", videobuf[(ioreg[LY].get()*160 + x)*4], 
-                            videobuf[(ioreg[LY].get()*160 + x)*4 +1],
-                            videobuf[(ioreg[LY].get()*160 + x)*4 +2],
-                            videobuf[(ioreg[LY].get()*160 + x)*4 +3]);
-*/
+                    else {
+                        uint8_t pixelData = fetcher.pixelFIFO.front();
+                        fetcher.pixelFIFO.pop();
+                        pixelData = 0xff - ((ioreg[BGP].get() >> (2*pixelData)) & 0x3) *85;
+                        videobuf[(ioreg[LY].get()*160 + x)*4] = pixelData;
+                        videobuf[(ioreg[LY].get()*160 + x)*4 +1] = pixelData;
+                        videobuf[(ioreg[LY].get()*160 + x)*4 +2] = pixelData;
+                        videobuf[(ioreg[LY].get()*160 + x)*4 +3] = 0xff;
+                        /*
+                           fprintf(stderr, "%d, %d, %d, %d\n", videobuf[(ioreg[LY].get()*160 + x)*4], 
+                           videobuf[(ioreg[LY].get()*160 + x)*4 +1],
+                           videobuf[(ioreg[LY].get()*160 + x)*4 +2],
+                           videobuf[(ioreg[LY].get()*160 + x)*4 +3]);
+                           */
 
 
-                    x++;
-                    if (x == 160) {
-                        pstate = 3;
+                        x++;
+                        if (x == 160) {
+                            pstate = 3;
+                            x=0;
+                        }
                     }
                     break;
                 }
@@ -161,12 +167,14 @@ Fetcher::Fetcher(PPU& p) : ppu(p), state(1) {
 }
 
 void Fetcher::init() {
-    auto x = (ppu.getRegister(SCX)/8 + ppu.x/8)&0x1f;
-    auto y = (ppu.getRegister(LY) + ppu.getRegister(SCY))&0xff;
+    tilecount = 0;
+    //x = ppu.getRegister(SCX)/8 &0x1f;
+    y = (ppu.getRegister(LY) + ppu.getRegister(SCY))&0xff;
     y_tileRow = y%8;
-    tileID = ((ppu.ioreg[LCDC].bitget(3)) ? 0x9c00:0x9800) + x + (y/8) * 0x20;
+    //tileID = ((ppu.ioreg[LCDC].bitget(3)) ? 0x9c00:0x9800) + x + (y/8) * 0x20;
     ticks = false;
-    clearQ(pixelFIFO);
+    clearQ();
+    state = 1;
 }
 
 void Fetcher::tick() {
@@ -174,6 +182,8 @@ void Fetcher::tick() {
     if (ticks) {
         switch (state) {
             case 1: {
+                        x = ( /*ppu.getRegister(SCX)/8 +*/ tilecount)&0x1f;
+                        tileID = ((ppu.ioreg[LCDC].bitget(3)) ? 0x9c00:0x9800) + x + ((y/8) * 0x20);
                         id = ppu.handler.mmu.loadWord(tileID);
                         state = 2;
                         break;
@@ -201,7 +211,7 @@ void Fetcher::tick() {
                             for (int i=7; i>=0; i--)
                                 pixelFIFO.push(buf[i]);
                             state = 1; 
-                            tileID++;
+                            tilecount++;
                         }
                         break;
                     }
@@ -210,7 +220,8 @@ void Fetcher::tick() {
 
 }
 
-void Fetcher::clearQ(std::queue<int>& q) {
-    while (!q.empty())
-        q.pop();
+void Fetcher::clearQ() {
+    while (!pixelFIFO.empty())
+        pixelFIFO.pop();
+    //fprintf(stderr, "%d\n", pixelFIFO.size());
 }
